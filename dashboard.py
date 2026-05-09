@@ -1198,7 +1198,8 @@ with st.sidebar:
     if video_options:
         selected_video = st.selectbox("Select Video", video_options)
     else:
-        selected_video = st.text_input("Video Path", "video/TLC00001.MP4")
+        selected_video = None
+        st.info("No videos available yet — loading…", icon="⏳")
 
     # ── Device selection ──────────────────────────────────────────────────────
     def get_available_devices():
@@ -1298,6 +1299,9 @@ tab_progress, tab_productivity, tab_safety = st.tabs([
 # ══════════════════════════════════════════════════════════════════════════════
 with tab_progress:
     if run_progress:
+        if selected_video is None:
+            st.warning("Please upload a video file first using the sidebar.", icon="📹")
+            st.stop()
         from video_processor import process_video
 
         st.markdown("---")
@@ -1464,6 +1468,9 @@ with tab_productivity:
     # LIVE PROCESSING MODE
     # ─────────────────────────────────────────────────────────────────────────
     if run_productivity:
+        if selected_video is None:
+            st.warning("Please upload a video file first using the sidebar.", icon="📹")
+            st.stop()
         boundary_pts = st.session_state.prod_boundary_pts
 
         if len(boundary_pts) < 2:
@@ -1699,6 +1706,9 @@ with tab_safety:
     # LIVE PROCESSING MODE
     # ─────────────────────────────────────────────────────────────────────────
     if run_safety:
+        if selected_video is None:
+            st.warning("Please upload a video file first using the sidebar.", icon="📹")
+            st.stop()
         st.markdown("---")
 
         col_vid, col_alerts = st.columns([3, 2])
