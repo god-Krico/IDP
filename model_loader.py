@@ -63,8 +63,17 @@ def _download_videos() -> None:
         if os.path.exists(local_path):
             continue
         with st.spinner(f"Downloading {filename} from Google Drive …"):
-            url = f"https://drive.google.com/uc?id={file_id}"
+            url = f"https://drive.google.com/uc?id={file_id}&export=download&confirm=t"
             gdown.download(url, local_path, quiet=False)
+            # If gdown wrote an HTML warning page instead of the video, remove it
+            if os.path.exists(local_path) and os.path.getsize(local_path) < 5 * 1024 * 1024:
+                os.remove(local_path)
+                st.warning(
+                    f"Google Drive returned a warning page instead of {filename}. "
+                    "Try opening the Drive link directly in your browser once to accept the "
+                    "large-file warning, then redeploy."
+                )
+                st.stop()
 
 
 # ── Public entry point ────────────────────────────────────────────────────────
