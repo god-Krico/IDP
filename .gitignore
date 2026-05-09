@@ -1,0 +1,51 @@
+# Model weights — host on HuggingFace, download via model_loader.py
+model/*.pt
+yolov8m.pt
+yolov8n-pose.pt
+
+# Videos
+video/
+*.MP4
+*.mp4
+*.avi
+*.mov
+
+# Generated output
+output/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env
+
+# Streamlit secrets (add real secrets via Streamlit Cloud UI)
+.streamlit/secrets.toml
+
+# Dev / scratch folders
+safety new/
+safety/
+*.ipynb
+*.ipynb_checkpoints/
+
+# Office / report files
+*.pdf
+*.docx
+*.xlsx
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.zip
+*.egg-info/
+dist/
+build/
