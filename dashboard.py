@@ -1615,6 +1615,27 @@ with tab_productivity:
             pil_img     = Image.fromarray(frame_small)
 
             try:
+                # Patch: newer Streamlit removed image_to_url from elements.image;
+                # drawable-canvas still depends on it, so restore a minimal version.
+                import streamlit.elements.image as _st_img_mod
+                if not hasattr(_st_img_mod, "image_to_url"):
+                    import base64
+                    from io import BytesIO as _BytesIO
+                    def _image_to_url(image, width, clamp, channels, output_format,
+                                      image_id, allow_emoji=False):
+                        from PIL import Image as _PIL
+                        import numpy as _np
+                        if isinstance(image, _np.ndarray):
+                            image = _PIL.fromarray(image)
+                        buf = _BytesIO()
+                        fmt = (output_format or "PNG").upper()
+                        if fmt == "AUTO":
+                            fmt = "PNG"
+                        image.save(buf, format=fmt)
+                        b64 = base64.b64encode(buf.getvalue()).decode()
+                        return f"data:image/{fmt.lower()};base64,{b64}"
+                    _st_img_mod.image_to_url = _image_to_url
+
                 from streamlit_drawable_canvas import st_canvas
 
                 canvas_result = st_canvas(
