@@ -1422,7 +1422,7 @@ with tab_progress:
                 if not detail_df.empty:
                     table_placeholder.dataframe(detail_df, use_container_width=True, hide_index=True)
 
-        result = process_video(selected_video, frame_callback=frame_callback, device=selected_device)
+        result = process_video(selected_video, frame_callback=frame_callback)
         progress_bar.progress(1.0, text="Processing complete!")
 
         st.markdown("---")
