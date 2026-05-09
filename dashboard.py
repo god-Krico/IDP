@@ -1298,10 +1298,11 @@ tab_progress, tab_productivity, tab_safety = st.tabs([
 # TAB 1 — PROGRESS TRACKING
 # ══════════════════════════════════════════════════════════════════════════════
 with tab_progress:
+    if run_progress and selected_video is None:
+        st.warning("Please select a video from the sidebar first.", icon="📹")
+        run_progress = False
+
     if run_progress:
-        if selected_video is None:
-            st.warning("Please upload a video file first using the sidebar.", icon="📹")
-            st.stop()
         from video_processor import process_video
 
         st.markdown("---")
@@ -1433,8 +1434,8 @@ with tab_progress:
         data = load_results()
         if data is None:
             st.info("No results found. Select a video and click **▶ Run Progress Analysis** to start.", icon="📹")
-            st.stop()
-        render_report_body(data["timelines"], data["metadata"])
+        else:
+            render_report_body(data["timelines"], data["metadata"])
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1467,10 +1468,11 @@ with tab_productivity:
     # ─────────────────────────────────────────────────────────────────────────
     # LIVE PROCESSING MODE
     # ─────────────────────────────────────────────────────────────────────────
+    if run_productivity and selected_video is None:
+        st.warning("Please select a video from the sidebar first.", icon="📹")
+        run_productivity = False
+
     if run_productivity:
-        if selected_video is None:
-            st.warning("Please upload a video file first using the sidebar.", icon="📹")
-            st.stop()
         boundary_pts = st.session_state.prod_boundary_pts
 
         if len(boundary_pts) < 2:
@@ -1705,10 +1707,11 @@ with tab_safety:
     # ─────────────────────────────────────────────────────────────────────────
     # LIVE PROCESSING MODE
     # ─────────────────────────────────────────────────────────────────────────
+    if run_safety and selected_video is None:
+        st.warning("Please select a video from the sidebar first.", icon="📹")
+        run_safety = False
+
     if run_safety:
-        if selected_video is None:
-            st.warning("Please upload a video file first using the sidebar.", icon="📹")
-            st.stop()
         st.markdown("---")
 
         col_vid, col_alerts = st.columns([3, 2])
