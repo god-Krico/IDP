@@ -1458,12 +1458,44 @@ with tab_productivity:
 
     # ── Helper: read first frame from selected video ───────────────────────────
     def _get_first_frame(video_path):
+        if not video_path:
+            return (None, 0, 0)
+        if not os.path.exists(video_path):
+            st.warning(f"Video file not found on disk: `{video_path}`")
+            return (None, 0, 0)
+        size_mb = os.path.getsize(video_path) / 1024 / 1024
+        if size_mb < 1.0:
+            st.warning(
+                f"Video file is only {size_mb:.2f} MB — likely a failed download "
+                f"(HTML page instead of video). Delete `{video_path}` and restart."
+            )
+            return (None, 0, 0)
+
+        # Try cv2 first
         cap = cv2.VideoCapture(video_path)
-        ret, frame = cap.read()
-        w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        if cap.isOpened():
+            ret, frame = cap.read()
+            w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            cap.release()
+            if ret:
+                return (frame, w, h)
         cap.release()
-        return (frame, w, h) if ret else (None, 0, 0)
+
+        # Fallback: imageio (handles more codecs on headless servers)
+        try:
+            import imageio.v3 as iio
+            import numpy as np
+            frame = iio.imread(video_path, index=0, plugin="pyav")
+            frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            h, w = frame_bgr.shape[:2]
+            return (frame_bgr, w, h)
+        except Exception as e:
+            st.warning(
+                f"Could not read first frame from `{video_path}` "
+                f"({size_mb:.1f} MB). cv2 and imageio both failed: {e}"
+            )
+            return (None, 0, 0)
 
     # ─────────────────────────────────────────────────────────────────────────
     # LIVE PROCESSING MODE
@@ -1573,7 +1605,6 @@ with tab_productivity:
                 frame_skip=prod_frame_skip,
                 timelapse_interval=prod_timelapse_interval,
                 frame_callback=prod_frame_callback,
-                device=selected_device,
             )
             prod_progress_bar.progress(1.0, text="Analysis complete!")
 
