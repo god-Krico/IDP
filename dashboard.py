@@ -1466,35 +1466,53 @@ with tab_productivity:
         size_mb = os.path.getsize(video_path) / 1024 / 1024
         if size_mb < 1.0:
             st.warning(
-                f"Video file is only {size_mb:.2f} MB — likely a failed download "
-                f"(HTML page instead of video). Delete `{video_path}` and restart."
+                f"Video file is only {size_mb:.2f} MB — likely a failed download."
             )
             return (None, 0, 0)
 
-        # Try cv2 first
-        cap = cv2.VideoCapture(video_path)
-        if cap.isOpened():
-            ret, frame = cap.read()
-            w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-            h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            cap.release()
-            if ret:
-                return (frame, w, h)
-        cap.release()
+        import tempfile, subprocess
 
-        # Fallback: imageio (handles more codecs on headless servers)
+        # Primary: use system ffmpeg to extract frame 0 as PNG, then read with cv2.imread
+        # (cv2.imread for still images works on any headless server; video decode does not)
+        try:
+            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+                tmp_path = tmp.name
+            result = subprocess.run(
+                ["ffmpeg", "-y", "-i", video_path, "-vframes", "1", tmp_path],
+                capture_output=True, timeout=60,
+            )
+            if result.returncode == 0 and os.path.exists(tmp_path):
+                frame = cv2.imread(tmp_path)
+                os.unlink(tmp_path)
+                if frame is not None:
+                    h, w = frame.shape[:2]
+                    return (frame, w, h)
+        except Exception:
+            pass
+
+        # Fallback 1: cv2 VideoCapture
+        try:
+            cap = cv2.VideoCapture(video_path)
+            if cap.isOpened():
+                ret, frame = cap.read()
+                w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                cap.release()
+                if ret:
+                    return (frame, w, h)
+            cap.release()
+        except Exception:
+            pass
+
+        # Fallback 2: imageio + PyAV
         try:
             import imageio.v3 as iio
-            import numpy as np
             frame = iio.imread(video_path, index=0, plugin="pyav")
             frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
             h, w = frame_bgr.shape[:2]
             return (frame_bgr, w, h)
         except Exception as e:
-            st.warning(
-                f"Could not read first frame from `{video_path}` "
-                f"({size_mb:.1f} MB). cv2 and imageio both failed: {e}"
-            )
+            st.warning(f"Could not read first frame from `{video_path}` ({size_mb:.1f} MB): {e}")
             return (None, 0, 0)
 
     # ─────────────────────────────────────────────────────────────────────────
