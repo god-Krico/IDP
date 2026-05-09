@@ -63,12 +63,8 @@ def _download_videos() -> None:
         if os.path.exists(local_path):
             continue
         with st.spinner(f"Downloading {filename} from Google Drive …"):
-            gdown.download(
-                id=file_id,
-                output=local_path,
-                quiet=False,
-                fuzzy=True,
-            )
+            url = f"https://drive.google.com/uc?id={file_id}"
+            gdown.download(url, local_path, quiet=False)
 
 
 # ── Public entry point ────────────────────────────────────────────────────────
