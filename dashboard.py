@@ -1663,101 +1663,61 @@ with tab_productivity:
             frame_small = cv2.resize(frame_rgb, (CANVAS_W, CANVAS_H))
             pil_img     = Image.fromarray(frame_small)
 
-            try:
-                import sys as _sys, base64 as _b64
-                from io import BytesIO as _BytesIO
+            # ── Canvas-scale point list ───────────────────────────────────────
+            if "prod_canvas_pts" not in st.session_state:
+                st.session_state.prod_canvas_pts = []
+            if "last_coord_click" not in st.session_state:
+                st.session_state.last_coord_click = None
 
-                def _image_to_url(image, width, clamp, channels, output_format,
-                                  image_id, allow_emoji=False):
-                    from PIL import Image as _PIL
-                    import numpy as _np
-                    if isinstance(image, _np.ndarray):
-                        image = _PIL.fromarray(image)
-                    buf = _BytesIO()
-                    fmt = (output_format or "PNG").upper()
-                    if fmt == "AUTO":
-                        fmt = "PNG"
-                    image.save(buf, format=fmt)
-                    b64 = _b64.b64encode(buf.getvalue()).decode()
-                    return f"data:image/{fmt.lower()};base64,{b64}"
+            # Draw accumulated points + boundary line onto the display image
+            display_arr = frame_small.copy()
+            cp_list = st.session_state.prod_canvas_pts
+            for i, pt in enumerate(cp_list):
+                cv2.circle(display_arr, pt, 7, (0, 255, 200), -1)
+                cv2.putText(display_arr, str(i + 1), (pt[0] + 9, pt[1] - 5),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 200), 1,
+                            cv2.LINE_AA)
+            if len(cp_list) >= 2:
+                for i in range(1, len(cp_list)):
+                    cv2.line(display_arr, cp_list[i - 1], cp_list[i],
+                             (0, 255, 200), 2, cv2.LINE_AA)
+            display_pil = Image.fromarray(display_arr)
 
-                # Patch streamlit.elements.image so a fresh canvas import gets our fn
-                import streamlit.elements.image as _st_img_mod
-                _st_img_mod.image_to_url = _image_to_url
+            st.caption("Click on the image to place boundary points (left → right). "
+                       "Place at least 2 points then hit **▶ Run Productivity Analysis**.")
 
-                from streamlit_drawable_canvas import st_canvas
+            from streamlit_image_coordinates import streamlit_image_coordinates
+            coord = streamlit_image_coordinates(display_pil, key="boundary_coords")
 
-                # Also patch the canvas module's own cached reference, which may
-                # have been bound to None/missing before our patch ran
-                _sdc = _sys.modules.get("streamlit_drawable_canvas")
-                if _sdc is not None:
-                    _sdc.image_to_url = _image_to_url
-
-                canvas_result = st_canvas(
-                    fill_color="rgba(0, 255, 200, 0.4)",
-                    stroke_width=2,
-                    stroke_color="#00ffcc",
-                    background_image=pil_img,
-                    drawing_mode="point",
-                    point_display_radius=6,
-                    height=CANVAS_H,
-                    width=CANVAS_W,
-                    key="boundary_canvas",
-                )
-
-                # Extract and persist boundary points
-                pts_canvas = []
-                if canvas_result.json_data:
-                    for obj in canvas_result.json_data.get("objects", []):
-                        if obj.get("type") == "circle":
-                            r  = obj.get("radius", 6)
-                            px = obj.get("left", 0) + r
-                            py = obj.get("top",  0) + r
-                            pts_canvas.append((px, py))
-                pts_canvas.sort(key=lambda p: p[0])
-
-                pts_full = [
+            # A new click arrives when coord differs from the last recorded click
+            if coord is not None and coord != st.session_state.last_coord_click:
+                st.session_state.last_coord_click = coord
+                new_pt = (coord["x"], coord["y"])
+                updated = list(st.session_state.prod_canvas_pts) + [new_pt]
+                st.session_state.prod_canvas_pts = updated
+                st.session_state.prod_boundary_pts = [
                     (int(px * scale_x), int(py * scale_y))
-                    for px, py in pts_canvas
+                    for px, py in updated
                 ]
-                st.session_state.prod_boundary_pts = pts_full
+                st.rerun()
 
-                # Visual feedback
-                col_info, col_clear = st.columns([4, 1])
-                with col_info:
-                    if len(pts_full) >= 2:
-                        st.success(
-                            f"✅ Boundary set — {len(pts_full)} points. "
-                            "Click **▶ Run Productivity Analysis** in the sidebar."
-                        )
-                    elif len(pts_full) == 1:
-                        st.warning("Add at least 1 more point.")
-                    else:
-                        st.info("Click on the image to place boundary points.")
-                with col_clear:
-                    if st.button("🗑 Clear", help="Reset the boundary"):
-                        st.session_state.prod_boundary_pts = []
-                        st.rerun()
-
-                # Preview boundary on frame (show in an expander)
-                if len(pts_full) >= 2:
-                    with st.expander("Preview boundary on full frame", expanded=False):
-                        preview = frame_rgb.copy()
-                        pts_sorted = sorted(pts_canvas, key=lambda p: p[0])
-                        for i in range(1, len(pts_sorted)):
-                            p1 = (int(pts_sorted[i-1][0]), int(pts_sorted[i-1][1]))
-                            p2 = (int(pts_sorted[i][0]),   int(pts_sorted[i][1]))
-                            cv2.line(preview, p1, p2, (0, 255, 200), 2)
-                        for pt in pts_sorted:
-                            cv2.circle(preview, (int(pt[0]), int(pt[1])), 5, (0, 200, 180), -1)
-                        st.image(preview, use_column_width=True)
-
-            except ImportError:
-                st.error(
-                    "**streamlit-drawable-canvas** is not installed. "
-                    "Run: `pip install streamlit-drawable-canvas` and restart the app."
-                )
-                st.image(frame_small, caption="Select video frame (install canvas library to draw boundary)")
+            # Feedback + clear button
+            col_info, col_clear = st.columns([4, 1])
+            with col_info:
+                n_pts = len(st.session_state.prod_canvas_pts)
+                if n_pts >= 2:
+                    st.success(f"✅ {n_pts} boundary points set. "
+                               "Click **▶ Run Productivity Analysis** in the sidebar.")
+                elif n_pts == 1:
+                    st.warning("Add at least 1 more point.")
+                else:
+                    st.info("Click on the image above to start placing points.")
+            with col_clear:
+                if st.button("🗑 Clear", help="Reset the boundary"):
+                    st.session_state.prod_boundary_pts = []
+                    st.session_state.prod_canvas_pts = []
+                    st.session_state.last_coord_click = None
+                    st.rerun()
 
         # ── Load saved results from a previous run (independent of whether
         #    processing is currently active — mirrors the progress tab's else branch)
