@@ -1903,7 +1903,8 @@ with tab_safety:
                         plot_bgcolor="rgba(0,0,0,0.05)",
                         font=dict(color="#ccc",size=10), showlegend=False,
                         xaxis_title="Time (s)", yaxis_title="m")
-                    safety_timeline_ph.plotly_chart(fig_tl, use_container_width=True)
+                    safety_timeline_ph.plotly_chart(fig_tl, use_container_width=True,
+                                                    key=f"stl_{frame_idx}")
 
             if is_chart_update:
                 # Live zone count chart
@@ -1930,7 +1931,8 @@ with tab_safety:
                         legend=dict(orientation="h", y=1.15),
                         xaxis_title="Time (s)", yaxis_title="Workers",
                         yaxis=dict(rangemode="nonnegative"))
-                    safety_metrics_ph.plotly_chart(fig_zt, use_container_width=True)
+                    safety_metrics_ph.plotly_chart(fig_zt, use_container_width=True,
+                                                   key=f"szt_{frame_idx}")
 
                 # Aerolift active time live counter
                 _al_sec = info.get("aerolift_active_sec", 0)
