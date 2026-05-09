@@ -1663,6 +1663,13 @@ with tab_productivity:
             frame_small = cv2.resize(frame_rgb, (CANVAS_W, CANVAS_H))
             pil_img     = Image.fromarray(frame_small)
 
+            # Always show frame as reference image — canvas background may not render
+            # on headless Streamlit Cloud due to removed image_to_url API
+            st.markdown("**Reference frame** — use this to plan your boundary points:")
+            st.image(pil_img, width=CANVAS_W)
+            st.markdown("**Click on the canvas below** to place your boundary points "
+                        "(positions match the reference image above):")
+
             try:
                 # Patch: newer Streamlit removed image_to_url from elements.image;
                 # drawable-canvas still depends on it, so restore a minimal version.
