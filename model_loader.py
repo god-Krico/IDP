@@ -1,7 +1,8 @@
 """Auto-download assets at startup.
 
 - Models: from HuggingFace Hub (private repo, token required)
-- Videos: from Google Drive (public link, no auth needed)
+- HF videos: from HuggingFace Hub (same repo, token required)
+- GDrive videos: from Google Drive (public link, no auth needed)
 
 Usage: call ensure_models() once at the top of dashboard.py.
 """
@@ -19,10 +20,18 @@ MODEL_FILENAMES = [
     "proximity_best.pt",
 ]
 
-# {filename: Google Drive file ID}
-VIDEO_FILES = {
+# Videos stored on HuggingFace (root of repo, same token as models)
+HF_VIDEO_FILENAMES = [
+    "trial_vid.mp4",
+]
+
+# Videos on Google Drive {filename: file_id}
+GDRIVE_VIDEO_FILES = {
     "TLC00008.mp4": "1erSIs3ttONA7U5UwBc_HyZUszaJx0tY8",
 }
+
+# Combined list of local filenames — used only for existence checks
+ALL_VIDEO_FILENAMES = list(GDRIVE_VIDEO_FILES.keys()) + HF_VIDEO_FILENAMES
 
 LOCAL_MODEL_DIR = "model"
 LOCAL_VIDEO_DIR = "video"
@@ -30,25 +39,36 @@ LOCAL_VIDEO_DIR = "video"
 
 # ── Models (HuggingFace) ──────────────────────────────────────────────────────
 
-@st.cache_resource(show_spinner=False)
-def _download_models(hf_repo: str, hf_token: str) -> None:
+def _hf_download_file(hf_repo: str, hf_token: str, filename: str, dest_dir: str) -> None:
     from huggingface_hub import hf_hub_download
 
-    os.makedirs(LOCAL_MODEL_DIR, exist_ok=True)
+    os.makedirs(dest_dir, exist_ok=True)
+    local_path = os.path.join(dest_dir, filename)
+    if os.path.exists(local_path):
+        return
+    with st.spinner(f"Downloading {filename} …"):
+        downloaded = hf_hub_download(
+            repo_id=hf_repo,
+            filename=filename,
+            token=hf_token,
+            local_dir=dest_dir,
+            local_dir_use_symlinks=False,
+        )
+        if os.path.abspath(downloaded) != os.path.abspath(local_path):
+            shutil.move(downloaded, local_path)
+
+
+@st.cache_resource(show_spinner=False)
+def _download_models(hf_repo: str, hf_token: str) -> None:
     for filename in MODEL_FILENAMES:
-        local_path = os.path.join(LOCAL_MODEL_DIR, filename)
-        if os.path.exists(local_path):
-            continue
-        with st.spinner(f"Downloading {filename} …"):
-            downloaded = hf_hub_download(
-                repo_id=hf_repo,
-                filename=filename,
-                token=hf_token,
-                local_dir=LOCAL_MODEL_DIR,
-                local_dir_use_symlinks=False,
-            )
-            if os.path.abspath(downloaded) != os.path.abspath(local_path):
-                shutil.move(downloaded, local_path)
+        _hf_download_file(hf_repo, hf_token, filename, LOCAL_MODEL_DIR)
+
+
+@st.cache_resource(show_spinner=False)
+def _download_hf_videos(hf_repo: str, hf_token: str) -> None:
+    for filename in HF_VIDEO_FILENAMES:
+        _hf_download_file(hf_repo, hf_token, filename, LOCAL_VIDEO_DIR)
+
 
 
 # ── Videos (Google Drive) ─────────────────────────────────────────────────────
@@ -80,9 +100,9 @@ def _gdrive_download(file_id: str, output_path: str) -> None:
 
 
 @st.cache_resource(show_spinner=False)
-def _download_videos() -> None:
+def _download_gdrive_videos() -> None:
     os.makedirs(LOCAL_VIDEO_DIR, exist_ok=True)
-    for filename, file_id in VIDEO_FILES.items():
+    for filename, file_id in GDRIVE_VIDEO_FILES.items():
         local_path = os.path.join(LOCAL_VIDEO_DIR, filename)
         if os.path.exists(local_path):
             continue
@@ -98,8 +118,14 @@ def _download_videos() -> None:
 
 def ensure_models() -> None:
     """Download missing models and videos. Safe to call on every rerun."""
-    # Models
-    if not all(os.path.exists(os.path.join(LOCAL_MODEL_DIR, f)) for f in MODEL_FILENAMES):
+    # Resolve HF credentials (needed for models + HF videos)
+    hf_repo = hf_token = None
+    needs_hf = (
+        not all(os.path.exists(os.path.join(LOCAL_MODEL_DIR, f)) for f in MODEL_FILENAMES)
+        or not all(os.path.exists(os.path.join(LOCAL_VIDEO_DIR, f)) for f in HF_VIDEO_FILENAMES)
+    )
+
+    if needs_hf:
         try:
             hf_repo = st.secrets["models"]["HF_REPO"]
             hf_token = st.secrets["models"]["HF_TOKEN"]
@@ -109,8 +135,15 @@ def ensure_models() -> None:
                 "Add [models] HF_REPO and HF_TOKEN to your Streamlit secrets."
             )
             st.stop()
+
+    # Models from HuggingFace
+    if not all(os.path.exists(os.path.join(LOCAL_MODEL_DIR, f)) for f in MODEL_FILENAMES):
         _download_models(hf_repo, hf_token)
 
-    # Videos
-    if not all(os.path.exists(os.path.join(LOCAL_VIDEO_DIR, f)) for f in VIDEO_FILES):
-        _download_videos()
+    # Videos from HuggingFace
+    if not all(os.path.exists(os.path.join(LOCAL_VIDEO_DIR, f)) for f in HF_VIDEO_FILENAMES):
+        _download_hf_videos(hf_repo, hf_token)
+
+    # Videos from Google Drive
+    if not all(os.path.exists(os.path.join(LOCAL_VIDEO_DIR, f)) for f in GDRIVE_VIDEO_FILES.keys()):
+        _download_gdrive_videos()
