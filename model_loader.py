@@ -53,26 +53,44 @@ def _download_models(hf_repo: str, hf_token: str) -> None:
 
 # ── Videos (Google Drive) ─────────────────────────────────────────────────────
 
+def _gdrive_download(file_id: str, output_path: str) -> None:
+    """Download a public Google Drive file using the usercontent endpoint (no confirmation page)."""
+    import requests
+
+    url = (
+        f"https://drive.usercontent.google.com/download"
+        f"?id={file_id}&export=download&authuser=0&confirm=t"
+    )
+    with requests.Session() as session:
+        resp = session.get(url, stream=True, timeout=600)
+        resp.raise_for_status()
+        with open(output_path, "wb") as f:
+            for chunk in resp.iter_content(chunk_size=4 * 1024 * 1024):
+                if chunk:
+                    f.write(chunk)
+
+    # Sanity check — Google sometimes returns an HTML error page for restricted files
+    size = os.path.getsize(output_path)
+    if size < 1024 * 1024:
+        os.remove(output_path)
+        raise RuntimeError(
+            f"Downloaded file is only {size} bytes — likely an HTML error page. "
+            "Make sure the Drive file is shared as 'Anyone with the link'."
+        )
+
+
 @st.cache_resource(show_spinner=False)
 def _download_videos() -> None:
-    import gdown
-
     os.makedirs(LOCAL_VIDEO_DIR, exist_ok=True)
     for filename, file_id in VIDEO_FILES.items():
         local_path = os.path.join(LOCAL_VIDEO_DIR, filename)
         if os.path.exists(local_path):
             continue
         with st.spinner(f"Downloading {filename} from Google Drive …"):
-            url = f"https://drive.google.com/uc?id={file_id}&export=download&confirm=t"
-            gdown.download(url, local_path, quiet=False)
-            # If gdown wrote an HTML warning page instead of the video, remove it
-            if os.path.exists(local_path) and os.path.getsize(local_path) < 5 * 1024 * 1024:
-                os.remove(local_path)
-                st.warning(
-                    f"Google Drive returned a warning page instead of {filename}. "
-                    "Try opening the Drive link directly in your browser once to accept the "
-                    "large-file warning, then redeploy."
-                )
+            try:
+                _gdrive_download(file_id, local_path)
+            except Exception as e:
+                st.error(f"Could not download {filename}: {e}")
                 st.stop()
 
 
