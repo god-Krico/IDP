@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Precast Tunnel Segment Monitoring — CE491 IDP Team 4</title>
+<meta name="description" content="Computer vision-based monitoring of progress, productivity and safety in precast tunnel ring segment casting. CE491 Interdisciplinary Design Project with Afcons Infrastructure Ltd.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-palette="#2a78d6">
+
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <a class="brand" href="#top">
+      <span class="brand-mark" aria-hidden="true">◧</span>
+      <span>Casting Yard Monitor</span>
+    </a>
+    <nav class="nav" aria-label="Sections">
+      <a href="#problem">Problem</a>
+      <a href="#pillars">System</a>
+      <a href="#results">Results</a>
+      <a href="#demo">Try it</a>
+      <a href="#team">Team</a>
+    </nav>
+    <button id="themeToggle" class="theme-toggle" type="button" aria-label="Switch colour theme">
+      <span class="theme-icon" aria-hidden="true">◐</span>
+    </button>
+  </div>
+</header>
+
+<main id="main">
+
+<!-- ══ HERO ══════════════════════════════════════════════════════════════ -->
+<section class="hero" id="top">
+  <div class="wrap">
+    <p class="eyebrow">CE491 · Interdisciplinary Design Project · Team 4</p>
+    <h1>Computer vision that watches a casting yard<br>so supervisors don't have to.</h1>
+    <p class="lede">
+      An automated monitoring system for precast tunnel ring segment production at
+      the Afcons casting yard in Mahape, Navi Mumbai. It turns ordinary CCTV and
+      timelapse footage into production progress, worker productivity and safety
+      analytics — replacing the clipboard-and-stopwatch time sheets kept by hand today.
+    </p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="#demo">Try the live dashboard</a>
+      <a class="btn btn-ghost" href="https://github.com/god-Krico/IDP">View source on GitHub</a>
+    </div>
+  </div>
+</section>
+
+<!-- ══ KPI STAT TILES ════════════════════════════════════════════════════ -->
+<section class="band" aria-labelledby="kpi-h">
+  <div class="wrap">
+    <h2 id="kpi-h" class="section-label">At a glance</h2>
+    <div class="tiles">
+      <div class="tile">
+        <p class="tile-label">Detection accuracy</p>
+        <p class="tile-value">0.980</p>
+        <p class="tile-note">mAP<span class="sub">50</span> across six production stages</p>
+      </div>
+      <div class="tile">
+        <p class="tile-label">Annotated frames</p>
+        <p class="tile-value">67,920</p>
+        <p class="tile-note">Site-specific, across full casting cycles</p>
+      </div>
+      <div class="tile">
+        <p class="tile-label">Moulds tracked</p>
+        <p class="tile-value">3</p>
+        <p class="tile-note">Simultaneously, from one camera</p>
+      </div>
+      <div class="tile">
+        <p class="tile-label">Models per frame</p>
+        <p class="tile-value">4</p>
+        <p class="tile-note">Segmentation, phase, tracking, pose</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ PROBLEM ═══════════════════════════════════════════════════════════ -->
+<section class="band alt" id="problem" aria-labelledby="problem-h">
+  <div class="wrap narrow">
+    <h2 id="problem-h">The problem</h2>
+    <p>
+      Construction progress is still tracked by people walking the site with a
+      clipboard. At the Afcons casting yard, supervisors maintain a handwritten
+      time sheet recording the start time, end time and duration of every process
+      for each mould. It works, but it is slow, subjective, and impossible to scale:
+      a supervisor can only watch so many moulds at once, and the record arrives
+      hours after the fact.
+    </p>
+    <p>
+      Precast manufacturing is unusually well suited to automation. The workflow is
+      cyclical and predictable, the workspace is constrained, and the same six
+      stages repeat for every segment. That makes progress monitoring a tractable
+      stage-classification problem rather than an open-ended scene-understanding one.
+    </p>
+    <div class="callout">
+      <p class="callout-title">What we built</p>
+      <p>
+        A single pipeline that reads a video and outputs three things a project
+        manager can act on: a digital time-cycle sheet, a Lean productivity
+        breakdown per mould, and a safety event log — all exportable, including as
+        a Primavera P6 XER file.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ THREE PILLARS ═════════════════════════════════════════════════════ -->
+<section class="band" id="pillars" aria-labelledby="pillars-h">
+  <div class="wrap">
+    <h2 id="pillars-h">Three monitoring pillars</h2>
+    <div class="cards">
+
+      <article class="card">
+        <p class="card-kicker">Pillar 01</p>
+        <h3>Progress &amp; time-cycle</h3>
+        <p>
+          A YOLO11m model classifies which of six production stages each mould is
+          in, frame by frame. A dedicated mould detector locates all three moulds
+          and assigns each detected activity to the right one by centroid
+          containment, so overlapping work on adjacent moulds is never conflated.
+        </p>
+        <p>
+          Timestamps are read straight off the video by OCR, so confirmed stage
+          transitions become a real digital time sheet — start, end and duration
+          per stage, per mould, with no manual entry.
+        </p>
+        <ul class="ticks">
+          <li>Six-stage classification</li>
+          <li>OCR-derived real timestamps</li>
+          <li>CSV and Primavera P6 XER export</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <p class="card-kicker">Pillar 02</p>
+        <h3>Worker productivity</h3>
+        <p>
+          Instead of classifying individual worker behaviour, the system analyses
+          <em>zones</em>. An instance-segmentation model carves out an exclusive
+          zone around each mould, workers are detected and tracked with ByteTrack,
+          and their activity is read jointly with the production phase happening at
+          their location.
+        </p>
+        <p>
+          Body motion alone misses fine manual work such as trowelling, so a pose
+          model adds wrist-level movement detection — a worker standing still with
+          moving hands is counted as active, not idle.
+        </p>
+        <ul class="ticks">
+          <li>Exclusive mould zones, no double-counting</li>
+          <li>Pose-based wrist activity detection</li>
+          <li>Lean VA / NVAN / NVA classification</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <p class="card-kicker">Pillar 03</p>
+        <h3>Safety monitoring</h3>
+        <p>
+          The same worker detections feed a safety layer that watches for PPE
+          compliance and dangerous proximity between workers and active machinery —
+          most critically the vacuum lifter as it moves a finished segment.
+        </p>
+        <p>
+          Events are logged with timestamps and the frames that triggered them, so
+          an incident can be reviewed rather than just counted.
+        </p>
+        <ul class="ticks">
+          <li>PPE violation detection</li>
+          <li>Proximity and danger-zone alerts</li>
+          <li>Event log with captured frames</li>
+        </ul>
+      </article>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══ PIPELINE ══════════════════════════════════════════════════════════ -->
+<section class="band alt" id="pipeline" aria-labelledby="pipeline-h">
+  <div class="wrap">
+    <h2 id="pipeline-h">How a frame becomes a metric</h2>
+    <ol class="steps">
+      <li>
+        <span class="step-n">1</span>
+        <div>
+          <h3>Operator sets the region of interest</h3>
+          <p>A boundary polyline is drawn once on the first frame, separating the
+             working area from background. Workers whose feet fall above the
+             interpolated line are excluded, handling perspective without a fixed threshold.</p>
+        </div>
+      </li>
+      <li>
+        <span class="step-n">2</span>
+        <div>
+          <h3>Mould zones are computed once</h3>
+          <p>Frames from the first 10% of the video are sampled until at least two
+             moulds are detected. Masks are dilated with an asymmetric 301×151 kernel
+             to capture nearby workers, then overlaps are removed so every zone is exclusive.</p>
+        </div>
+      </li>
+      <li>
+        <span class="step-n">3</span>
+        <div>
+          <h3>Detection, tracking and filtering</h3>
+          <p>Workers are detected and tracked across frames with ByteTrack, then passed
+             through size checks, static-artifact rejection, ghost-worker memory for brief
+             occlusions, and geometric deduplication.</p>
+        </div>
+      </li>
+      <li>
+        <span class="step-n">4</span>
+        <div>
+          <h3>Temporal smoothing</h3>
+          <p>Raw per-frame predictions are noisy. A class is only confirmed once it
+             appears in at least 3 of the last 10 processed frames — which removed
+             most false transitions without retraining anything.</p>
+        </div>
+      </li>
+      <li>
+        <span class="step-n">5</span>
+        <div>
+          <h3>Labour gating and Lean classification</h3>
+          <p>A phase is only recorded as productive if enough active workers are
+             actually present. Machine-driven phases bypass this. Each state maps to a
+             Lean category and aggregates into crew balance charts.</p>
+        </div>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- ══ RESULTS ═══════════════════════════════════════════════════════════ -->
+<section class="band" id="results" aria-labelledby="results-h">
+  <div class="wrap">
+    <h2 id="results-h">Model performance</h2>
+    <p class="section-intro">
+      The first model was trained on a public 546-image dataset and scored well on
+      its own split — but collapsed on real footage from the yard. Grooves on the
+      mould surface were read as rebar; simultaneous pours went undetected. Closing
+      that domain gap meant recording our own data on site.
+    </p>
+
+    <!-- Single-series bar chart: per-class detection quality -->
+    <figure class="viz-root chart-figure">
+      <figcaption>
+        <h3 id="chart-h">Detection quality by production stage</h3>
+        <p class="chart-sub">YOLO11m, validation set · mAP<span class="sub">50-95</span> — higher is better</p>
+      </figcaption>
+
+      <div class="chart" role="img" aria-labelledby="chart-h" aria-describedby="chart-desc">
+        <ul class="bars" id="barList"></ul>
+      </div>
+
+      <p id="chart-desc" class="visually-hidden">
+        Bar chart of mAP50-95 by stage: Vacuum Lifting 0.995, Curing 0.991,
+        Mould Cleaning 0.948, Surface Finishing 0.947, Concrete Pouring 0.937,
+        Rebar Cage Placement 0.860. Overall 0.946.
+      </p>
+
+      <details class="table-view">
+        <summary>View as table</summary>
+        <div class="table-scroll">
+          <table>
+            <caption>YOLO11m detection results on the site-specific dataset</caption>
+            <thead>
+              <tr>
+                <th scope="col">Class</th>
+                <th scope="col" class="num">Images</th>
+                <th scope="col" class="num">Instances</th>
+                <th scope="col" class="num">P</th>
+                <th scope="col" class="num">R</th>
+                <th scope="col" class="num">mAP<span class="sub">50</span></th>
+                <th scope="col" class="num">mAP<span class="sub">50-95</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><th scope="row"><code>mould_cleaning</code></th><td class="num">253</td><td class="num">298</td><td class="num">0.906</td><td class="num">0.973</td><td class="num">0.982</td><td class="num">0.948</td></tr>
+              <tr><th scope="row"><code>rebar_cage_placement</code></th><td class="num">102</td><td class="num">114</td><td class="num">0.974</td><td class="num">0.904</td><td class="num">0.944</td><td class="num">0.860</td></tr>
+              <tr><th scope="row"><code>concrete_pouring</code></th><td class="num">322</td><td class="num">322</td><td class="num">0.948</td><td class="num">0.950</td><td class="num">0.980</td><td class="num">0.937</td></tr>
+              <tr><th scope="row"><code>surface_finishing</code></th><td class="num">286</td><td class="num">298</td><td class="num">0.986</td><td class="num">0.955</td><td class="num">0.984</td><td class="num">0.947</td></tr>
+              <tr><th scope="row"><code>curing</code></th><td class="num">126</td><td class="num">302</td><td class="num">0.994</td><td class="num">0.993</td><td class="num">0.995</td><td class="num">0.991</td></tr>
+              <tr><th scope="row"><code>vacuum_lifting</code></th><td class="num">207</td><td class="num">207</td><td class="num">0.995</td><td class="num">1.000</td><td class="num">0.995</td><td class="num">0.995</td></tr>
+            </tbody>
+            <tfoot>
+              <tr><th scope="row">All</th><td class="num">1636</td><td class="num">1541</td><td class="num">0.967</td><td class="num">0.962</td><td class="num">0.980</td><td class="num">0.946</td></tr>
+            </tfoot>
+          </table>
+        </div>
+      </details>
+    </figure>
+
+    <p class="footnote">
+      Rebar cage placement is the weakest class, which matches what it looks like on
+      site: the cage is often half-inserted or hidden behind workers, so the
+      transitional frames are genuinely ambiguous.
+    </p>
+
+    <div class="split">
+      <div>
+        <h3>Mould segmentation</h3>
+        <p>
+          A YOLOv8n-seg model was trained in three stages across three camera sources
+          to produce the spatially stable mould masks that anchor the whole zone-based
+          analysis. On the combined 3,615-image validation set it reaches a mask
+          mAP<span class="sub">50-95</span> of <strong>0.995</strong> — the masks hug the
+          true mould boundary rather than merely covering the region, which is what the
+          zone-exclusivity computation downstream depends on.
+        </p>
+      </div>
+      <div>
+        <h3>Building the dataset</h3>
+        <p>
+          A Brinno BCC300 timelapse camera was installed at the yard, covering three
+          adjacent moulds across full production cycles. Footage was annotated in CVAT,
+          yielding 67,920 frames. Curing dominated the raw data at 71,626 instances
+          against just 54 for rebar cage placement, so over-represented classes were
+          subsampled and under-represented ones augmented with Albumentations.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ MODELS TABLE ══════════════════════════════════════════════════════ -->
+<section class="band alt" aria-labelledby="models-h">
+  <div class="wrap">
+    <h2 id="models-h">Models running per frame</h2>
+    <div class="table-scroll">
+      <table class="plain">
+        <thead>
+          <tr><th scope="col">Model</th><th scope="col">Weights</th><th scope="col">Function</th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">Mould segmentation</th><td><code>finetuned_multi.pt</code></td><td>Instance segmentation — finds the physical mould shapes</td></tr>
+          <tr><th scope="row">Phase detection</th><td><code>phase_detection.pt</code></td><td>Object detection — classifies the work activity</td></tr>
+          <tr><th scope="row">Worker tracker</th><td><code>proximity_best.pt</code></td><td>Detection + ByteTrack — finds and follows people</td></tr>
+          <tr><th scope="row">Pose estimation</th><td><code>yolov8n-pose.pt</code></td><td>17-keypoint skeleton — detects wrist movement</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ══ DEMO ══════════════════════════════════════════════════════════════ -->
+<section class="band" id="demo" aria-labelledby="demo-h">
+  <div class="wrap">
+    <h2 id="demo-h">See it run on real footage</h2>
+    <p class="section-intro">
+      The dashboard <strong>streams video in place</strong> rather than downloading
+      it — the host serves byte ranges and the camera writes the MP4 index at the
+      front of the file, so the pipeline reads frames straight off the network. That
+      matters here: timelapse footage has no temporal redundancy for the encoder to
+      exploit, so a 7-minute clip runs to 4.2&nbsp;GB. Point it at a video on
+      <strong>Hugging Face</strong> (recommended — no download quota) or paste a
+      public <strong>Google Drive</strong> link.
+    </p>
+
+    <div class="demo-card">
+      <p class="demo-label">Sample casting yard footage</p>
+      <p class="demo-hint" style="margin-top:0">
+        The demo runs on <strong><code>TLC1.MP4</code></strong> — a full casting
+        cycle, 14,374 frames over 8 minutes of timelapse. It and six further
+        recordings (23&nbsp;GB, ~43 minutes of yard time) are hosted publicly on
+        Hugging Face, so the dashboard streams them with no download and no quota.
+        In the sidebar, press <strong>Load sample footage</strong>: all seven
+        register at once and <code>TLC1.MP4</code> is selected for you.
+      </p>
+      <div class="copy-row">
+        <code id="sampleLink">god-Krico/idp-footage</code>
+        <button id="copyBtn" class="btn btn-primary btn-copy" type="button"
+                data-copy="#sampleLink">Copy repo id</button>
+      </div>
+      <div class="table-scroll" style="margin-top:14px">
+        <table>
+          <caption>Files in the dataset — all verified streamable; <code>TLC1.MP4</code> is the demo video</caption>
+          <thead>
+            <tr>
+              <th scope="col">File</th>
+              <th scope="col" class="num">Frames</th>
+              <th scope="col" class="num">Duration</th>
+              <th scope="col" class="num">Size</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="demo-row"><th scope="row"><code>TLC1.MP4</code> <span class="demo-tag">demo</span></th><td class="num">14,374</td><td class="num">8.0 min</td><td class="num">4.19 GB</td></tr>
+            <tr><th scope="row"><code>TLC2.MP4</code></th><td class="num">13,934</td><td class="num">7.7 min</td><td class="num">4.19 GB</td></tr>
+            <tr><th scope="row"><code>TLC3.MP4</code></th><td class="num">12,053</td><td class="num">6.7 min</td><td class="num">4.19 GB</td></tr>
+            <tr><th scope="row"><code>TLC4.MP4</code></th><td class="num">14,025</td><td class="num">7.8 min</td><td class="num">4.19 GB</td></tr>
+            <tr><th scope="row"><code>TLC5.MP4</code></th><td class="num">2,270</td><td class="num">1.3 min</td><td class="num">0.68 GB</td></tr>
+            <tr><th scope="row"><code>TLC6.MP4</code></th><td class="num">15,240</td><td class="num">8.5 min</td><td class="num">4.19 GB</td></tr>
+            <tr><th scope="row"><code>TLC7.MP4</code></th><td class="num">5,985</td><td class="num">3.3 min</td><td class="num">1.59 GB</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="demo-hint">
+        <a href="https://huggingface.co/datasets/god-Krico/idp-footage">
+          Browse the dataset on Hugging Face →
+        </a>
+      </p>
+      <p class="demo-hint note">
+        These are timelapse recordings, so the files are large for their runtime —
+        the camera cannot compress across frames that are seconds apart. Nothing is
+        downloaded, but a full analysis is still a long job: raise the
+        <em>frame sample interval</em> in the sidebar for a quick look.
+      </p>
+    </div>
+
+    <div class="cards two">
+      <article class="card">
+        <h3>Queue a batch</h3>
+        <p>
+          Add several videos to the analysis queue, choose which of the three
+          analyses each one should run, reorder them, and let the whole batch
+          process back-to-back without supervision.
+        </p>
+      </article>
+      <article class="card">
+        <h3>Keep every result</h3>
+        <p>
+          Each finished run is archived separately — raw JSON, a spreadsheet-ready
+          CSV, and any generated imagery — so a new run never overwrites an old one.
+          Download a single run or the entire history as a ZIP.
+        </p>
+      </article>
+    </div>
+
+    <div class="run-local">
+      <h3>Run it yourself</h3>
+      <pre><code>git clone https://github.com/god-Krico/IDP.git
+cd IDP
+pip install -r requirements.txt
+streamlit run dashboard.py</code></pre>
+      <p class="footnote">
+        Model weights download automatically on first launch. A GPU is strongly
+        recommended — four models run per frame, so CPU-only inference on a long
+        video is slow.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ CHALLENGES ════════════════════════════════════════════════════════ -->
+<section class="band alt" aria-labelledby="chal-h">
+  <div class="wrap narrow">
+    <h2 id="chal-h">What went wrong, and what fixed it</h2>
+    <dl class="faq">
+      <dt>The public dataset didn't survive contact with the site.</dt>
+      <dd>
+        A model at 0.994 mAP<span class="sub">50</span> on its own validation split
+        failed on real CCTV footage — mould grooves misread as rebar, low-confidence
+        pours, empty and freshly filled moulds indistinguishable under shed lighting.
+        We recorded and annotated our own site data and retrained.
+      </dd>
+
+      <dt>Curing swamped everything else.</dt>
+      <dd>
+        Curing is the longest stage, so it contributed 71,626 of the annotated
+        instances against 54 for rebar cage placement. Trained as-is, the model
+        becomes a curing detector. Targeted subsampling plus class-specific
+        augmentation, anchored to the concrete pouring count, rebalanced it.
+      </dd>
+
+      <dt>Single-frame noise created phantom stage transitions.</dt>
+      <dd>
+        Passing workers and the vacuum lifter caused momentary misclassifications
+        that were logged as real transitions. The 3-of-10 sliding window persistence
+        filter eliminated them with no retraining and no meaningful added latency.
+      </dd>
+
+      <dt>Still workers with moving hands were counted as idle.</dt>
+      <dd>
+        Pixel-difference motion detection misses fine manual work such as trowelling.
+        Adding a pose model and tracking wrist displacement lets the system label
+        these workers <em>Active-Hands</em> instead of idle.
+      </dd>
+    </dl>
+  </div>
+</section>
+
+<!-- ══ TEAM ══════════════════════════════════════════════════════════════ -->
+<section class="band" id="team" aria-labelledby="team-h">
+  <div class="wrap">
+    <h2 id="team-h">Team</h2>
+    <p class="section-intro">
+      CE491 Interdisciplinary Design Project, Team 4 — in partnership with
+      Afcons Infrastructure Ltd. at the Afcons Casting Yard, Mahape, Navi Mumbai.
+    </p>
+
+    <ul class="people">
+      <li><span class="person-name">Karan Satarkar</span><span class="person-id">23B0708</span></li>
+      <li><span class="person-name">Aditya Patil</span><span class="person-id">23B0720</span></li>
+      <li><span class="person-name">Dibyanshu Dash</span><span class="person-id">23B0725</span></li>
+      <li><span class="person-name">Ashwin Mankar</span><span class="person-id">23B0726</span></li>
+      <li><span class="person-name">Vishal Patel</span><span class="person-id">23B0745</span></li>
+    </ul>
+
+    <div class="split mentors">
+      <div>
+        <p class="mentor-role">Project Supervisor</p>
+        <p class="mentor-name">Prof. Varun Kumar Reja</p>
+      </div>
+      <div>
+        <p class="mentor-role">Industry Mentor</p>
+        <p class="mentor-name">Dr. Guru Raju Pokkunuri</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap footer-inner">
+    <p>CE491 IDP Final Project · Team 4 · Afcons Infrastructure Ltd.</p>
+    <p><a href="https://github.com/god-Krico/IDP">github.com/god-Krico/IDP</a></p>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
